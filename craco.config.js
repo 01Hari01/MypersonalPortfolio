@@ -11,17 +11,34 @@ module.exports = {
   },
   webpack: {
     configure: (webpackConfig) => {
-      const babelLoader = webpackConfig.module.rules.find(
-        (rule) => rule.oneOf
-      ).oneOf.find((rule) => rule.loader && rule.loader.includes('babel-loader'));
+      const oneOfRule = webpackConfig.module.rules.find((rule) => rule.oneOf);
 
-      if (babelLoader) {
-        babelLoader.include = [
-          babelLoader.include,
-          /node_modules\/@mui/,
-          /node_modules\/@emotion/,
-          /node_modules\/@babel\/runtime/
-        ];
+      if (oneOfRule) {
+        const babelLoader = oneOfRule.oneOf.find(
+          (rule) => rule.loader && rule.loader.includes('babel-loader')
+        );
+
+        if (babelLoader) {
+          // Remove the exclude for @mui and @emotion packages
+          const originalExclude = babelLoader.exclude;
+          babelLoader.exclude = function(modulePath) {
+            // Allow @mui and @emotion packages to be transpiled
+            if (/@mui/.test(modulePath) || /@emotion/.test(modulePath)) {
+              return false;
+            }
+            // Use original exclude for everything else
+            if (!originalExclude) {
+              return false;
+            }
+            if (typeof originalExclude === 'function') {
+              return originalExclude(modulePath);
+            }
+            if (originalExclude.test) {
+              return originalExclude.test(modulePath);
+            }
+            return false;
+          };
+        }
       }
 
       return webpackConfig;
